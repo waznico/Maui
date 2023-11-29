@@ -35,6 +35,16 @@ public class PopupService : IPopupService
 							?? throw new InvalidOperationException("Could not locate IServiceProvider");
 	}
 
+	internal static void AddTransientPopupContent<TPopupContentView, TPopupViewModel>(IServiceCollection services)
+		where TPopupContentView : View
+		where TPopupViewModel : INotifyPropertyChanged
+	{
+		viewModelToViewMappings.Add(typeof(TPopupViewModel), typeof(TPopupContentView));
+
+		services.AddTransient(typeof(TPopupContentView));
+		services.AddTransient(typeof(TPopupViewModel));
+	}
+
 	internal static void AddTransientPopup<TPopupView, TPopupViewModel>(IServiceCollection services)
 		where TPopupView : IPopup
 		where TPopupViewModel : INotifyPropertyChanged
@@ -126,22 +136,49 @@ public class PopupService : IPopupService
 	/// <exception cref="InvalidOperationException"></exception>
 	static void ValidateBindingContext<TViewModel>(Popup popup, out TViewModel bindingContext)
 	{
-		if (popup.BindingContext is not TViewModel viewModel)
+		if (popup.BindingContext is TViewModel viewModel)
 		{
-			throw new InvalidOperationException($"Unexpected type has been assigned to the BindingContext of {popup.GetType().FullName}. Expected type {typeof(TViewModel).FullName} but was {popup.BindingContext?.GetType().FullName ?? "null"}");
+			bindingContext = viewModel;
+			return;			
+		}
+		else if (popup.Content?.BindingContext is TViewModel contentViewModel)
+		{
+			bindingContext = contentViewModel;
+			return;
 		}
 
-		bindingContext = viewModel;
+		throw new InvalidOperationException($"Unexpected type has been assigned to the BindingContext of {popup.GetType().FullName}. Expected type {typeof(TViewModel).FullName} but was {popup.BindingContext?.GetType().FullName ?? "null"}");
 	}
 
 	Popup GetPopup(Type viewModelType)
 	{
-		var popup = serviceProvider.GetService(viewModelToViewMappings[viewModelType]) as Popup;
+		var view = serviceProvider.GetService(viewModelToViewMappings[viewModelType]);
 
-		if (popup is null)
+		if (view is null)
 		{
 			throw new InvalidOperationException(
 				$"Unable to resolve popup type for {viewModelType} please make sure that you have called {nameof(AddTransientPopup)}");
+		}
+
+		Popup popup;
+
+		if (view is View visualElement)
+		{
+			popup = new Popup
+			{
+				Content = visualElement
+			};
+
+			//visualElement.SetBinding(VisualElement.BindingContextProperty, new Binding(path: nameof(Popup.BindingContext), source: popup));
+		}
+		else if (view is Popup viewPopup)
+		{
+			popup = viewPopup;
+		}
+		else
+		{
+			throw new InvalidOperationException(
+				$"Invalid type of view being used to present a Popup. Expected either IPopup or View.");
 		}
 
 		return popup;
