@@ -168,8 +168,6 @@ public class PopupService : IPopupService
 			{
 				Content = visualElement
 			};
-
-			//visualElement.SetBinding(VisualElement.BindingContextProperty, new Binding(path: nameof(Popup.BindingContext), source: popup));
 		}
 		else if (view is Popup viewPopup)
 		{
