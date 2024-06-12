@@ -290,7 +290,7 @@ partial class CameraManager
 			var imgData = ArrayPool<byte>.Shared.Rent(buffer.Capacity());
 			try
 			{
-				buffer.Get(imgData);
+				buffer.Get(imgData, 0, buffer.Remaining());
 				var memStream = new MemoryStream(imgData);
 				cameraView.OnMediaCaptured(memStream);
 			}
